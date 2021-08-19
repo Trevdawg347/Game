@@ -63,7 +63,13 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         
     }
     override func didSimulatePhysics() {
+        
         player.position.x += xAcceleration * 50
+        if player.position.x > 375 + player.size.width / 2 {
+            player.position.x = 0 - player.size.width / 2
+        } else if player.position.x < 0 - player.size.width / 2 {
+            player.position.x = 375 + player.size.width / 2
+        }
     }
     
     func didBegin(_ contact: SKPhysicsContact) {
