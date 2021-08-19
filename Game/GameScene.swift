@@ -7,6 +7,7 @@
 
 import SpriteKit
 import GameplayKit
+import CoreMotion
 
 
 class GameScene: SKScene, SKPhysicsContactDelegate {
@@ -15,24 +16,34 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     var label: SKLabelNode!
     var score: Int = 0
 
+    var motionManager = CMMotionManager()
+    var xAcceleration: CGFloat = 0
     
     var bulletCategory: UInt32 = 2
     var enemyCategory: UInt32 = 1
     var playerCategory: UInt32 = 3
     
+    
     override func didMove(to view: SKView) {
         physicsWorld.contactDelegate = self
         
+        // Player
         player = SKSpriteNode(color: .black, size: CGSize(width: 64, height: 64))
         player.position = CGPoint(x: self.size.width / 2, y: player.size.height + 20)
         self.addChild(player)
         
+        // Move Player
+        motionManager.startAccelerometerUpdates(to: OperationQueue.current!) { data, error in
+            self.xAcceleration = CGFloat((data?.acceleration.x)!)
+        }
+        
+        // Enemy
         let wait = SKAction.wait(forDuration: 0.5)
         let add = SKAction.run { self.addEnemy() }
         let repeats = SKAction.repeatForever(SKAction.sequence([wait, add]))
         self.run(repeats)
-        addEnemy()
-                
+        
+        // Score
         label = SKLabelNode(text: "Score: \(score)")
         label.horizontalAlignmentMode = .left
         label.verticalAlignmentMode = .center
@@ -50,6 +61,9 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
             
         }
         
+    }
+    override func didSimulatePhysics() {
+        player.position.x += xAcceleration * 50
     }
     
     func didBegin(_ contact: SKPhysicsContact) {
@@ -86,8 +100,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     func shoot(position: CGPoint) {
         let bullet = SKSpriteNode(color: .yellow, size: CGSize(width: 5, height: 5))
         bullet.name = "bullet"
-        bullet.position.x = player.position.x
-        bullet.position.y = player.position.y + player.size.height / 2
+        bullet.position = CGPoint(x: player.position.x, y: player.position.y + player.size.height / 2)
         bullet.physicsBody = SKPhysicsBody(rectangleOf: bullet.size)
         bullet.physicsBody?.affectedByGravity = false
         bullet.physicsBody?.categoryBitMask = bulletCategory
@@ -95,18 +108,10 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         bullet.physicsBody?.collisionBitMask = 0
         self.addChild(bullet)
         
-        
-        let xDistance = abs(bullet.position.x - position.x)
-        let yDistance = abs(bullet.position.y - position.y)
-        let distance = sqrt(pow(xDistance, 2) + pow(yDistance, 2))
-        
-
-        
-        let move = SKAction.move(to: CGPoint(x: 0, y: 0), duration: Double(distance/750))
+        let move = SKAction.move(to: CGPoint(x: bullet.position.x, y: self.frame.height), duration: 1)
         let remove = SKAction.removeFromParent()
         bullet.run(SKAction.sequence([move, remove]))
     }
-    
     func addScore() {
         score += 1
         label.text = "Score: \(score)"
